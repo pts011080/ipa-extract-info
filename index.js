@@ -46,7 +46,7 @@ IPA.prototype.icon = function (fd,cb){
       if (notEmpty(info) && notEmpty(info.CFBundleIcons) && notEmpty(info.CFBundleIcons.CFBundlePrimaryIcon) && notEmpty(info.CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconFiles)) {
 
         var paths = info.CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconFiles;
-        console.log('paths: ',paths);
+        // console.log('paths: ',paths);
 
         getIconFromArray(paths, fd, function(err,src){
           if (err) {
@@ -65,7 +65,7 @@ IPA.prototype.icon = function (fd,cb){
 
 function getIconFromArray(paths,fd, cb){
   var path = paths.pop();
-  console.log('path: ',path);
+  // console.log('path: ',path);
   if (!path) {
     path = 'Icon';
     getIconWithScale(path,'.png',fd,function(err,src){
@@ -102,7 +102,7 @@ function getIconWithScale(path,scale,fd,cb){
   var path = path.concat(scale);
 
   var iconReg = new RegExp("^Payload\/[^\/]+\.app\/"+path+"$");
-  console.log('iconReg: ',iconReg);
+  // console.log('iconReg: ',iconReg);
 
   payload_file(iconReg,fd,function(err, src){
     if (err) {
