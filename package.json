@@ -17,7 +17,9 @@
     "yauzl": "^2.10.0",
     "zipjs-browserify": "^1.0.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "pngdefry": "^1.1.6"
+  },
   "scripts": {},
   "browser": "browser.js"
 }
