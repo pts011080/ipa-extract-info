@@ -8,19 +8,82 @@ var once = require('once');
 var chrOpenChevron = 60;
 var chrLowercaseB = 98;
 
-module.exports = function(fd, cb){
-  var foundPlist = false;
-  cb = once(cb || function(){});
+function icon(info,fd,cb){
+  if (notEmpty(info) && notEmpty(info.CFBundleIcons) && notEmpty(info.CFBundleIcons.CFBundlePrimaryIcon) && notEmpty(info.CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconFiles)) {
+    var paths = info.CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconFiles;
+    getIconFromArray(paths, fd, function(err,src){
+      if (err) {
+        return cb(err);
+      }else{
+        return cb(null,src);
+      }
+    });
+  }
+}
 
+function getIconFromArray(paths,fd, cb){
+  var path = paths.pop();
+  // console.log('path: ',path);
+  if (!path) {
+    path = 'Icon';
+    getIconWithScale(path,'.png',fd,function(err,src){
+      if (err) {
+        cb(err);
+      }else{
+        return cb(null,src);
+      }
+    });
+  }else{
+    getIconWithScale(path,'@3x.png',fd,function(err,src){
+      if (err) {
+        getIconWithScale(path,'@2x.png',fd,function(err,src){
+          if (err) {
+            getIconWithScale(path,'.png',fd,function(err,src){
+              if (err) {
+                cb(err);
+              }else{
+                return cb(null,src);
+              }
+            });
+          }else{
+            return cb(null,src);
+          }
+        });
+      }else{
+        return cb(null,src);
+      }
+    });
+  }
+}
+
+function getIconWithScale(path,scale,fd,cb){
+  var path = path.concat(scale);
+
+  var iconReg = new RegExp("^Payload\/[^\/]+\.app\/"+path+"$");
+  // console.log('iconReg: ',iconReg);
+
+  payload_file(iconReg,fd,function(err, src){
+    if (err) {
+      return cb(err);
+    }else if (src) {
+      return cb(null, src); 
+    }
+  });
+}
+
+function payload_file(filename,fd,cb){
+  var foundFile = false;
+  cb = once(cb || function(){});
   fromFd(fd, function(err, zip){
     if (err) return cb(err);
     var onentry;
 
     zip.on('entry', onentry = function(entry){
-      if (!reg.test(entry.fileName)) {
+      // console.log('entry: ',entry.fileName);
+      if (!filename.test(entry.fileName)) {
         return
       } else {
-        foundPlist = true
+        foundFile = true
       }
 
       zip.removeListener('entry', onentry);
@@ -29,31 +92,54 @@ module.exports = function(fd, cb){
 
         collect(file, function(err, src){
           if (err) return cb(err);
-
-          var obj;
-          try {
-            if (src[0] === chrOpenChevron) {
-              obj = plistParse(src.toString());
-            } else if (src[0] === chrLowercaseB) {
-              obj = bplistParse(src);
-            } else {
-              return cb(new Error('unknown plist type %s', src[0]));
-            }
-          } catch (err) {
-            return cb(err);
-          }
-
-          cb(null, [].concat(obj), src);
+          cb(null, src);
         });
       });
     });
 
     zip
     .on('end', function() {
-      if (!foundPlist) { return cb(new Error('No Info.plist found')); }
+      if (!foundFile) { return cb(new Error('No File found')); }
     })
     .on('error', function(err) {
       return cb(err);
     });
   });
 }
+
+function notEmpty(item){
+  return (typeof item !== 'undefined' && item.length !== 0);
+}
+
+module.exports = function(fd, cb){
+
+  payload_file(reg.info,fd,function(err, src){
+    if (err) {
+      cb(err);
+      throw err;
+      return;
+    }else if (src) {
+      var obj;
+      try {
+        if (src[0] === chrOpenChevron) {
+          obj = plistParse(src.toString());
+        } else if (src[0] === chrLowercaseB) {
+          obj = bplistParse(src);
+        } else {
+          return cb(new Error('unknown plist type %s', src[0]));
+        }
+      } catch (err) {
+        return cb(err);
+      }
+
+      var infos = [].concat(obj);
+      icon(infos[0],fd,function(err,icon){
+        cb(null, infos[0], src, icon);
+      });
+
+    }
+  });
+
+}
+
+
